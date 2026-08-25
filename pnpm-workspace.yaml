@@ -1,0 +1,19 @@
+packages:
+  - .
+
+allowBuilds:
+  esbuild: set this to true or false
+
+# The kits are OPTIONAL peers: this package composes what the app installed and
+# does not redistribute eight packages to an app that wanted two.
+#
+# pnpm auto-installs peers by default, which here means trying to fetch every
+# kit from a registry none of them are published to yet. Off until they are —
+# and arguably off permanently, because an optional peer installed automatically
+# is not optional.
+#
+# It lives here rather than in .npmrc because pnpm 11 stopped reading settings
+# from .npmrc and from the `pnpm` field in package.json. The symptom is the
+# setting being silently ignored, which reads exactly like the setting being
+# wrong.
+autoInstallPeers: false
