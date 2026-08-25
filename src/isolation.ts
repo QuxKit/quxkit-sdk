@@ -48,7 +48,7 @@ export async function assertIsolationEnforced(
   if (onExempt === 'ignore') return null;
 
   const verdict = await checkIsolation(pool);
-  if (!verdict || !verdict.exempt) return verdict;
+  if (!verdict?.exempt) return verdict;
 
   const message =
     `Row-level security does not apply to "${verdict.role}" — it is a superuser or has BYPASSRLS. ` +
