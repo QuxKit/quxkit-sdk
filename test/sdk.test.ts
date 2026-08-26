@@ -161,16 +161,16 @@ describe('the migration rules', () => {
     );
   });
 
-  it('names files explicitly rather than globbing a kit’s sql directory', () => {
-    // identity-kit ships eight files and an app needs three; alphabetical order
-    // is not dependency order. Asserted against the table rather than a
-    // resolved plan, because resolving needs the package installed.
-    assert.deepEqual(SCHEMAS.identity.files, [
-      '001_identity.sql',
-      '005_hardening.sql',
-      '006_events.sql',
-    ]);
-    assert.equal(SCHEMAS.tenant.files.length, 6);
+  it('names files explicitly rather than globbing a kit\u2019s sql directory', () => {
+    // A readable, reviewable list — but one that has to be kept true, which is
+    // what test/schema.test.ts does by reading the kits themselves. Here only
+    // the shape: every kit declares at least one file and a package to find it
+    // in. Asserted against the table rather than a resolved plan, because
+    // resolving needs the package installed.
+    for (const kit of ORDER) {
+      assert.ok(SCHEMAS[kit].files.length > 0, `${kit} declares no schema`);
+      assert.match(SCHEMAS[kit].package, /^@quxkit\//);
+    }
   });
 
   it('orders tenant before the kits that delegate isolation to it', () => {

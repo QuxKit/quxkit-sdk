@@ -49,8 +49,8 @@ safe setting is the one nobody has to remember.
 ## Migrations
 
 The kits ship their SQL inside their packages. What is worth having in a package
-rather than in an app is the **order** — six of tenant-kit's six, three of
-identity-kit's eight, and some must follow others.
+rather than in an app is the **order** — within a kit and between them, and some
+files must follow others in a different kit entirely.
 
 ```ts
 sdk.migrationPlan();   // the files, in order, without applying them
@@ -60,8 +60,37 @@ await sdk.migrate();
 The plan is separate from applying it because anything writing to somebody
 else's database had better be able to show what it will do first.
 
-Files are named explicitly, never globbed: a kit's `sql/` holds opt-in modules
-beside its core, and alphabetical order is not dependency order.
+Files are named explicitly, never globbed — a list you can read in review, and
+one a stray file in a published package cannot quietly join. `test/schema.test.ts`
+reads the kits' own `sql/` directories and fails if the two disagree, which is
+the only thing that keeps an explicit list honest.
+
+## Which kits
+
+| kit | schema | needs |
+| --- | --- | --- |
+| `identity` | 8 files | — |
+| `tenant` | 6 | — |
+| `billing` | 12 | — |
+| `crypto` | 2 | — |
+| `mail` | 5 | — |
+| `comm` | 3 | — |
+| `integration` | 3 | — |
+| `content` | 2 | `tenant` |
+| `translation` | 1 | — |
+| `domain` | 2 | `tenant` |
+
+Every kit in the family that takes a `SqlExecutor` and ships a schema, with two
+deliberate absences:
+
+- **`@quxkit/rag-kit`** takes a `SqlExecutor` and belongs here, but it also needs
+  an inference provider, and a provider is a credential and a budget rather than
+  a row in a table. Adding it means the SDK grows a second kind of configuration.
+  Worth doing; not done.
+- **`@quxkit/ui-kit`** never will. It is components copied into a repo at build
+  time — there is no runtime object for a composition root to hand a pool to.
+  The same goes for the `-adapters` packages and the MCP servers, which are
+  surfaces onto kits rather than kits.
 
 ## The kits are optional peers
 
