@@ -1,10 +1,12 @@
 # @quxkit/sdk
 
-**QuxKit** · the composition
+**QuxKit** · the composition layer
 
-One pool, one transaction discipline, the kits wired to it — versioned, so a bug
-in the wiring is fixed by publishing a version rather than by a pull-request
-campaign across every repository that copied it.
+One SDK for the whole QuxKit family. Pick the kits your app needs, hand them
+one configuration, and the SDK gives every kit a shared database connection,
+runs every migration in the right order, and verifies your tenant isolation is
+actually enforced — the wiring every QuxKit app needs, maintained once and
+versioned, instead of copied into each app.
 
 ```ts
 import { createSdk } from '@quxkit/sdk';
@@ -13,92 +15,80 @@ export const sdk = createSdk({
   kits: ['identity', 'tenant', 'billing'],
 });
 
-await sdk.migrate();       // every schema, in the order the kits require
-sdk.require('tenant');     // throws with instructions if it is not enabled
+await sdk.migrate();       // every enabled kit's schema, in dependency order
+sdk.has('billing');        // true
+sdk.require('tenant');     // guard a route: throws a clear error if not enabled
+sdk.pool;                  // the one pg.Pool every kit shares
 ```
 
-## What this is for
+That is the whole integration. Add a kit by adding its name to the list and
+running `migrate()` again — migrations are idempotent, so re-running the full
+set is always safe.
 
-Composing the QuxKit family in a real application takes about 150 lines that are
-not boilerplate — they are three bugs somebody already had, and one guard against
-a fourth. Those lines lived in one app. Every other app that composed the family
-copied them, and a bug in them was fixed once per copy.
+## What you get
 
-| | Why it is not boilerplate |
-|---|---|
-| **One `pg.Pool`** shared by every kit | Every kit takes a `SqlExecutor`, not a connection. A pool per kit is four transaction disciplines that cannot see each other's work, and the kits stop composing. |
-| **A lazy `Proxy`** around every instance | `next build` imports every route to collect metadata, on a machine with no database. Anything constructed at module scope runs there. |
-| **`globalThis`** for the pool | A framework that reloads modules per route in development creates a pool per edit otherwise, and the connection limit arrives by lunchtime. |
-| **An isolation guard** | A superuser or `BYPASSRLS` connection ignores every row-level-security policy while `\d` still reports them enabled. It fails **open**, so it gets a check rather than a comment. |
+- **One connection pool, every kit.** Each kit takes the same `SqlExecutor`,
+  so they share one pool and one transaction discipline and compose cleanly —
+  a billing write and a tenant check can happen in the same transaction.
+- **Migrations in dependency order.** Each kit ships its SQL inside its
+  package; the SDK knows the order, within a kit and across kits.
+  `sdk.migrationPlan()` shows exactly which files will run before you apply
+  them — useful for review, required for writing to a database you operate for
+  someone else.
+- **Build-safe by design.** Nothing connects until the first query. `next
+  build` (or any tool that imports your routes on a machine with no database)
+  just works, and in dev the pool survives hot reloads instead of leaking one
+  per edit.
+- **Isolation, verified.** Row-level security silently does not apply to
+  superuser or `BYPASSRLS` connections. The SDK checks the actual connection
+  and tells you — a warning in development (where local Postgres is usually a
+  superuser and everything is fine), a hard stop in production (where it is
+  not fine). Your tenancy policies are enforced, and you know it rather than
+  assume it.
+- **Only what you enable.** The kits are optional peer dependencies: install
+  the ones you use, and the SDK never requires the rest. A kit that is not
+  enabled fails fast with a message saying how to turn it on.
 
-## The isolation guard
+## The kits
 
-The one that matters most, because nothing else will tell you:
+Eleven kits, one list:
 
-```
-[quxkit] Row-level security does not apply to "postgres" — it is a superuser or
-has BYPASSRLS. Every tenancy policy in this database is being ignored, and
-nothing else will say so.
-```
+| kit | what it adds | needs |
+| --- | --- | --- |
+| `identity` | accounts, sessions, MFA, passkeys, API keys, OIDC | — |
+| `tenant` | teams, roles, invitations, row-level isolation | — |
+| `billing` | metering, subscriptions, invoices, wallets, dunning | — |
+| `crypto` | offers, trades, custody records | — |
+| `mail` | transactional email, suppression, quotas, search | — |
+| `comm` | conversations, bridge channels, transcripts | — |
+| `integration` | provider connections, canonical capabilities | — |
+| `content` | typed content models with a publishing lifecycle | `tenant` |
+| `translation` | app copy served from Postgres, no rebuilds | — |
+| `domain` | customer custom domains, DNS + certificates | `tenant` |
+| `host` | hosted instances: provisioning, metering, lifecycle | `tenant` |
 
-It **warns** by default and **throws** in production, and that asymmetry is
-deliberate: every developer running homebrew Postgres is a superuser, and an SDK
-that refuses to start on a laptop is one that gets ripped out on day one. The
-safe setting is the one nobody has to remember.
+`needs` is enforced at construction: enabling `content` without `tenant` is a
+clear error while you are looking at the config, not a broken policy at
+runtime. The declared migration lists are verified against each kit's own
+`sql/` directory by the test suite, so the SDK and the kits cannot drift.
 
-## Migrations
+Two packages sit outside the list on purpose: `@quxkit/rag-kit` (needs an
+inference provider as well as a database — planned, once the SDK models that
+kind of configuration) and `@quxkit/ui-kit` (components copied into your repo
+at build time; there is nothing for a runtime SDK to construct).
 
-The kits ship their SQL inside their packages. What is worth having in a package
-rather than in an app is the **order** — within a kit and between them, and some
-files must follow others in a different kit entirely.
+## Configuration
+
+`DATABASE_URL` is the only required environment. Supply your own pool instead
+with `createSdk({ kits, pool })` — then the SDK creates no connections at all
+and `pg` need not even be installed.
 
 ```ts
-sdk.migrationPlan();   // the files, in order, without applying them
-await sdk.migrate();
+import { required, optional } from '@quxkit/sdk';
+
+const url = required('DATABASE_URL', 'Every kit shares one connection.');
+const region = optional('REGION') ?? 'nyc';
 ```
-
-The plan is separate from applying it because anything writing to somebody
-else's database had better be able to show what it will do first.
-
-Files are named explicitly, never globbed — a list you can read in review, and
-one a stray file in a published package cannot quietly join. `test/schema.test.ts`
-reads the kits' own `sql/` directories and fails if the two disagree, which is
-the only thing that keeps an explicit list honest.
-
-## Which kits
-
-| kit | schema | needs |
-| --- | --- | --- |
-| `identity` | 8 files | — |
-| `tenant` | 6 | — |
-| `billing` | 12 | — |
-| `crypto` | 2 | — |
-| `mail` | 5 | — |
-| `comm` | 3 | — |
-| `integration` | 3 | — |
-| `content` | 2 | `tenant` |
-| `translation` | 1 | — |
-| `domain` | 2 | `tenant` |
-| `host` | 2 | `tenant` |
-
-Every kit in the family that takes a `SqlExecutor` and ships a schema, with two
-deliberate absences:
-
-- **`@quxkit/rag-kit`** takes a `SqlExecutor` and belongs here, but it also needs
-  an inference provider, and a provider is a credential and a budget rather than
-  a row in a table. Adding it means the SDK grows a second kind of configuration.
-  Worth doing; not done.
-- **`@quxkit/ui-kit`** never will. It is components copied into a repo at build
-  time — there is no runtime object for a composition root to hand a pool to.
-  The same goes for the `-adapters` packages and the MCP servers, which are
-  surfaces onto kits rather than kits.
-
-## The kits are optional peers
-
-This package composes what you installed. It does not redistribute eight
-packages to an app that wanted two, and a kit that is not enabled is not
-constructed — reaching for it throws a message saying how to turn it on, rather
-than returning `undefined` and failing somewhere else entirely.
 
 ## Licence
 
