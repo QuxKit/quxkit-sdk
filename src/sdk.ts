@@ -21,6 +21,7 @@ import {
   type MigrationStep,
   migrate,
   migrationPlan,
+  ORDER,
   validateKits,
 } from './migrate.js';
 
@@ -117,16 +118,11 @@ export function createSdk(options: SdkOptions): Sdk {
 
   // Validated at construction, not on first query. A configuration naming a kit
   // that does not exist should say so while somebody is looking at the config.
-  const known: KitName[] = [
-    'identity',
-    'tenant',
-    'billing',
-    'mail',
-    'comm',
-    'integration',
-    'content',
-    'domain',
-  ];
+  // The canonical list lives with the schemas. Keeping a second copy here is
+  // how the two drift, and a name this list is missing gets rejected as unknown
+  // even though the kit is wired.
+  const known: readonly KitName[] = ORDER;
+
   for (const kit of kits) {
     if (!known.includes(kit)) {
       throw new Error(`Unknown kit "${kit}". Known kits: ${known.join(', ')}.`);
