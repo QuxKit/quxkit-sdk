@@ -94,6 +94,7 @@ describe('the declared schema matches the kits', () => {
       'content',
       'crypto',
       'domain',
+      'host',
       'identity',
       'integration',
       'mail',

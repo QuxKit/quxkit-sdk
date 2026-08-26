@@ -79,6 +79,7 @@ the only thing that keeps an explicit list honest.
 | `content` | 2 | `tenant` |
 | `translation` | 1 | — |
 | `domain` | 2 | `tenant` |
+| `host` | 2 | `tenant` |
 
 Every kit in the family that takes a `SqlExecutor` and ships a schema, with two
 deliberate absences:

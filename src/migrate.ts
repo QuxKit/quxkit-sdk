@@ -26,7 +26,8 @@ export type KitName =
   | 'integration'
   | 'content'
   | 'translation'
-  | 'domain';
+  | 'domain'
+  | 'host';
 
 interface KitSchema {
   package: string;
@@ -143,6 +144,11 @@ const SCHEMAS: Record<KitName, KitSchema> = {
     files: ['001_domains.sql', '002_isolation.sql'],
     requires: ['tenant'],
   },
+  host: {
+    package: '@quxkit/host-kit',
+    files: ['001_hosting.sql', '002_isolation.sql'],
+    requires: ['tenant'],
+  },
 };
 
 /**
@@ -151,7 +157,7 @@ const SCHEMAS: Record<KitName, KitSchema> = {
  * tenant-kit before anything that delegates isolation to it, identity before
  * anything that references a user. Stated as a list rather than derived from
  * `requires`, because the list is short, the ordering is a fact somebody has to
- * be able to read, and a topological sort of ten items is more machinery than
+ * be able to read, and a topological sort of eleven items is more machinery than
  * the problem deserves.
  *
  * This is also the canonical set of kit names: `createSdk` checks against it
@@ -168,6 +174,7 @@ export const ORDER: KitName[] = [
   'content',
   'translation',
   'domain',
+  'host',
 ];
 
 export interface MigrationStep {
