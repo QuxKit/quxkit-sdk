@@ -49,7 +49,7 @@ interface KitSchema {
 const SCHEMAS: Record<KitName, KitSchema> = {
   identity: {
     package: '@quxkit/identity-kit',
-    // All eight. An earlier version applied three — core, hardening, events —
+    // All nine. An earlier version applied three — core, hardening, events —
     // on the reasoning that MFA, API keys, OIDC, passkeys and magic links are
     // opt-in. They are opt-in *features*, but this SDK is the surface a kit is
     // turned on through, so the cost of omitting them is `identity.passkeys`
@@ -64,6 +64,7 @@ const SCHEMAS: Record<KitName, KitSchema> = {
       '006_events.sql',
       '007_passkeys.sql',
       '008_magic.sql',
+      '009_oidc_provider.sql',
     ],
   },
   tenant: {
