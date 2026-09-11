@@ -1,7 +1,7 @@
 {
   "name": "@quxkit/sdk",
-  "version": "0.1.0",
-  "description": "The composition \u2014 one pool, one transaction discipline, the QuxKit kits wired together and versioned.",
+  "version": "0.1.1",
+  "description": "The composition — one pool, one transaction discipline, the QuxKit kits wired together and versioned.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -88,7 +88,7 @@
     "type": "git",
     "url": "git+https://github.com/QuxKit/quxkit-sdk.git"
   },
-  "homepage": "https://quxkit.ai/solutions/sdk",
+  "homepage": "https://quxkit.ai",
   "author": "QuxKit.AI (https://quxkit.ai)",
   "publishConfig": {
     "access": "restricted"
