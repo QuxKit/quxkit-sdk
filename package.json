@@ -88,5 +88,9 @@
     "type": "git",
     "url": "git+https://github.com/QuxKit/quxkit-sdk.git"
   },
-  "homepage": "https://quxkit.ai/solutions/sdk"
+  "homepage": "https://quxkit.ai/solutions/sdk",
+  "author": "QuxKit.AI (https://quxkit.ai)",
+  "publishConfig": {
+    "access": "restricted"
+  }
 }
